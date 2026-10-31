@@ -56,13 +56,13 @@ export type ServerDeps = {
   log: Logger;
   priceMints: string[];
   adminApiKey: string;
-  corsOrigins: string[https://solana-project-omega.vercel.app/];
+  corsOrigins: string[];
 };
 
 export async function buildServer(deps: ServerDeps) {
   const app = Fastify({ loggerInstance: deps.log, bodyLimit: 16 * 1024 });
   await app.register(cors, {
-    origin: deps.corsOrigins.includes("*") ? true : deps.corsOrigins,
+    origin: deps.corsOrigins.includes("https://solana-project-omega.vercel.app") ? true : deps.corsOrigins,
     methods: ["GET", "POST"],
   });
   await app.register(websocket);
