@@ -26,6 +26,7 @@ const schema = z.object({
 
   JUPITER_API_URL: z.string().url().default("https://lite-api.jup.ag/swap/v1"),
   JUPITER_PRICE_URL: z.string().url().default("https://lite-api.jup.ag/price/v3"),
+  JUPITER_API_KEY: z.string().optional(),
 
   PLATFORM_FEE_BPS: z.coerce.number().int().min(0).max(1000).default(50),
   PLATFORM_FEE_OWNER: z.string().min(32),
@@ -35,7 +36,7 @@ const schema = z.object({
   PRIORITY_FEE_MAX_LAMPORTS: z.coerce.number().int().positive().default(200_000),
 
   PRICE_MINTS: z.string().default("So11111111111111111111111111111111111111112").transform(csv),
-  PRICE_POLL_MS: z.coerce.number().int().min(250).default(2000),
+  PRICE_POLL_MS: z.coerce.number().int().min(250).default(10_000),
 });
 
 export type Config = z.infer<typeof schema>;

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { JupiterClient, JupiterError } from "../src/solana/jupiter.js";
+import { JupiterClient, JupiterError, rateLimitBackoffMs } from "../src/solana/jupiter.js";
 
 const SOL = "So11111111111111111111111111111111111111112";
 const USDC = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
@@ -33,11 +33,35 @@ describe("JupiterClient", () => {
     expect(url).toContain("amount=1000000000");
   });
 
-  it("retries on 429 then succeeds", async () => {
+  it("retries on 429 with a rate-limit sized backoff, then succeeds", async () => {
     let calls = 0;
-    const client = new JupiterClient("https://jup.test", async () => (++calls < 3 ? json({}, 429) : json(quote)));
+    const waits: number[] = [];
+    const client = new JupiterClient("https://jup.test", async () => (++calls < 3 ? json({}, 429) : json(quote)), {
+      sleep: async (ms) => void waits.push(ms),
+    });
     await client.quote({ inputMint: SOL, outputMint: USDC, amount: 1n, slippageBps: 50, platformFeeBps: 0 });
     expect(calls).toBe(3);
+    expect(waits.every((ms) => ms >= 1_000)).toBe(true);
+  });
+
+  it("honours Retry-After, capped at 5s", () => {
+    expect(rateLimitBackoffMs(0, "2")).toBe(2_000);
+    expect(rateLimitBackoffMs(0, "60")).toBe(5_000);
+    expect(rateLimitBackoffMs(1, null)).toBeGreaterThanOrEqual(2_000);
+  });
+
+  it("sends the API key header when configured", async () => {
+    let key: string | null = null;
+    const client = new JupiterClient(
+      "https://jup.test",
+      async (_u, init) => {
+        key = new Headers(init?.headers).get("x-api-key");
+        return json(quote);
+      },
+      { apiKey: "k-123" },
+    );
+    await client.quote({ inputMint: SOL, outputMint: USDC, amount: 1n, slippageBps: 50, platformFeeBps: 0 });
+    expect(key).toBe("k-123");
   });
 
   it("does not retry 4xx client errors", async () => {

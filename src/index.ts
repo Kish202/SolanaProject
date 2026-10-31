@@ -28,7 +28,7 @@ async function main() {
     db,
     connection,
     broadcastRpcs,
-    jupiter: new JupiterClient(cfg.JUPITER_API_URL),
+    jupiter: new JupiterClient(cfg.JUPITER_API_URL, fetch, { apiKey: cfg.JUPITER_API_KEY }),
     sponsor,
     guard: new SponsorGuard(redis, cfg.SPONSOR_MAX_TX_PER_WALLET_PER_HOUR, cfg.SPONSOR_DAILY_BUDGET_LAMPORTS),
     log: logger,
@@ -41,6 +41,7 @@ async function main() {
     priceUrl: cfg.JUPITER_PRICE_URL,
     mints: cfg.PRICE_MINTS,
     pollMs: cfg.PRICE_POLL_MS,
+    apiKey: cfg.JUPITER_API_KEY,
   });
 
   const app = await buildServer({

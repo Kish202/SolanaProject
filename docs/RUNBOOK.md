@@ -52,6 +52,8 @@ This should be impossible for more than about 90 seconds, because blockhashes ex
 
 ## Jupiter errors / "no route available"
 - 503 `routing` errors are retryable. Check https://status.jup.ag.
+- 503 `rate_limited` means Jupiter returned 429. The free lite-api quota is shared by the price poller and
+  quotes: raise `PRICE_POLL_MS` (default 10000) or set `JUPITER_API_KEY` with the `api.jup.ag` URLs.
 - 422 errors for a specific pair usually mean the token has no liquidity, so this isn't an incident.
 
 ## Suspected sponsor key compromise

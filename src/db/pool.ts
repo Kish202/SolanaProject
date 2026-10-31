@@ -18,8 +18,20 @@ export type DbOptions = { sslMode?: DbSslMode; sslCa?: string; max?: number };
 
 const isLocal = (host: string) => ["localhost", "127.0.0.1", "::1"].includes(host);
 
+/** Parses without ever echoing the input: the connection string contains the database password. */
+function parseDatabaseUrl(databaseUrl: string): URL {
+  try {
+    return new URL(databaseUrl);
+  } catch {
+    throw new Error(
+      "DATABASE_URL is not a valid URL. Use the Supabase 'Session pooler' string with your real password " +
+        "(no [brackets]; URL-encode special characters like @ # / ? or use a password with only letters and numbers).",
+    );
+  }
+}
+
 export function resolveSsl(databaseUrl: string, opts: DbOptions = {}): false | pg.ConnectionConfig["ssl"] {
-  const url = new URL(databaseUrl);
+  const url = parseDatabaseUrl(databaseUrl);
   const mode = opts.sslMode ?? (isLocal(url.hostname) ? "disable" : "require");
   if (mode === "disable") return false;
   if (mode === "require") return { rejectUnauthorized: false };
@@ -28,7 +40,7 @@ export function resolveSsl(databaseUrl: string, opts: DbOptions = {}): false | p
 
 /** `sslmode` in the URL would override our `ssl` object inside node-postgres, so we strip it and decide here. */
 export function stripSslParams(databaseUrl: string): string {
-  const url = new URL(databaseUrl);
+  const url = parseDatabaseUrl(databaseUrl);
   for (const p of ["sslmode", "sslcert", "sslkey", "sslrootcert"]) url.searchParams.delete(p);
   return url.toString();
 }

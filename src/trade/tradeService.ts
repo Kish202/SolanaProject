@@ -49,6 +49,18 @@ type TradeRow = {
   platform_fee_amount: string;
 };
 
+const PREVIEW_TTL_MS = 5_000;
+
+export type PreviewResult = {
+  inAmount: string;
+  outAmount: string;
+  minOutAmount: string;
+  priceImpactPct: string;
+  platformFeeBps: number;
+  platformFeeAmount: string;
+  routeHops: number;
+};
+
 export class TradeService {
   private readonly feeAccountCache = new Map<string, PublicKey | null>();
 
@@ -67,8 +79,23 @@ export class TradeService {
     },
   ) {}
 
-  async preview(req: Omit<QuoteRequest, "wallet" | "creatorId">) {
+  private readonly previewCache = new Map<string, { at: number; value: Promise<PreviewResult> }>();
+
+  /** Identical previews within PREVIEW_TTL_MS share one Jupiter call, to stay inside its rate limit. */
+  preview(req: Omit<QuoteRequest, "wallet" | "creatorId">): Promise<PreviewResult> {
     if (req.inputMint === req.outputMint) throw new TradeError("inputMint and outputMint must differ");
+    const key = `${req.inputMint}:${req.outputMint}:${req.amount}:${req.slippageBps}`;
+    const now = Date.now();
+    const hit = this.previewCache.get(key);
+    if (hit && now - hit.at < PREVIEW_TTL_MS) return hit.value;
+    for (const [k, v] of this.previewCache) if (now - v.at >= PREVIEW_TTL_MS) this.previewCache.delete(k);
+    const value = this.fetchPreview(req);
+    value.catch(() => this.previewCache.delete(key));
+    this.previewCache.set(key, { at: now, value });
+    return value;
+  }
+
+  private async fetchPreview(req: Omit<QuoteRequest, "wallet" | "creatorId">) {
     const platformFeeBps = (await this.feeAccountFor(req.outputMint)) ? this.deps.platformFeeBps : 0;
     const quote = await this.deps.jupiter.quote({ ...req, platformFeeBps });
     return {

@@ -36,7 +36,7 @@ services:
       - key: CORS_ORIGINS
         sync: false
       - key: PRICE_POLL_MS
-        value: "5000"
+        value: "10000"
 
   - type: keyvalue
     name: solana-trade-redis

@@ -73,6 +73,9 @@ export async function buildServer(deps: ServerDeps) {
     if (err instanceof SponsorLimitError) return reply.status(429).send({ error: "sponsor_limit", message: err.message });
     if (err instanceof SponsorPolicyError) return reply.status(422).send({ error: "sponsor_policy", message: err.message });
     if (err instanceof JupiterError) {
+      if (err.status === 429) {
+        return reply.status(503).send({ error: "rate_limited", message: "price router is busy, try again in a few seconds" });
+      }
       return reply.status(err.retryable ? 503 : 422).send({ error: "routing", message: "no route available, try again" });
     }
     req.log.error({ err }, "unhandled error");

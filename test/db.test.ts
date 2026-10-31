@@ -19,6 +19,16 @@ describe("database SSL", () => {
     });
   });
 
+  it("rejects an invalid URL without echoing it (it contains the password)", () => {
+    const bad = "postgresql://postgres.ref:secret-pw@aws-0-[REGION].pooler.supabase.com:5432/postgres";
+    expect(() => stripSslParams(bad)).toThrow(/not a valid URL/);
+    try {
+      stripSslParams(bad);
+    } catch (e) {
+      expect(String((e as Error).message)).not.toContain("secret-pw");
+    }
+  });
+
   it("strips sslmode from the URL so it cannot override the ssl config", () => {
     expect(stripSslParams(`${SUPABASE}?sslmode=require`)).toBe(SUPABASE);
   });

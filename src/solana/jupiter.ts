@@ -71,12 +71,25 @@ export type QuoteParams = {
 
 export type FetchLike = typeof fetch;
 
+export type JupiterClientOptions = {
+  timeoutMs?: number;
+  /** Optional key for Jupiter's keyed API (higher rate limits); sent as `x-api-key`. */
+  apiKey?: string;
+  sleep?: (ms: number) => Promise<void>;
+};
+
 export class JupiterClient {
+  private readonly timeoutMs: number;
+  private readonly sleep: (ms: number) => Promise<void>;
+
   constructor(
     private readonly baseUrl: string,
     private readonly fetchImpl: FetchLike = fetch,
-    private readonly timeoutMs = 5_000,
-  ) {}
+    private readonly opts: JupiterClientOptions = {},
+  ) {
+    this.timeoutMs = opts.timeoutMs ?? 5_000;
+    this.sleep = opts.sleep ?? sleep;
+  }
 
   async quote(p: QuoteParams): Promise<JupiterQuote> {
     const qs = new URLSearchParams({
@@ -123,12 +136,14 @@ export class JupiterClient {
 
   private async request(url: string, init?: RequestInit, attempt = 0): Promise<unknown> {
     const maxAttempts = 3;
+    const headers = new Headers(init?.headers);
+    if (this.opts.apiKey) headers.set("x-api-key", this.opts.apiKey);
     let res: Response;
     try {
-      res = await this.fetchImpl(url, { ...init, signal: AbortSignal.timeout(this.timeoutMs) });
+      res = await this.fetchImpl(url, { ...init, headers, signal: AbortSignal.timeout(this.timeoutMs) });
     } catch (err) {
       if (attempt + 1 < maxAttempts) {
-        await sleep(backoffMs(attempt));
+        await this.sleep(backoffMs(attempt));
         return this.request(url, init, attempt + 1);
       }
       throw new JupiterError(`Jupiter request failed: ${(err as Error).message}`, undefined, true);
@@ -137,12 +152,19 @@ export class JupiterClient {
 
     const retryable = res.status === 429 || res.status >= 500;
     if (retryable && attempt + 1 < maxAttempts) {
-      await sleep(backoffMs(attempt));
+      await this.sleep(res.status === 429 ? rateLimitBackoffMs(attempt, res.headers.get("retry-after")) : backoffMs(attempt));
       return this.request(url, init, attempt + 1);
     }
     const body = await res.text().catch(() => "");
     throw new JupiterError(`Jupiter ${res.status}: ${body.slice(0, 300)}`, res.status, retryable);
   }
+}
+
+/** Rate-limit windows are about a second or more, so short exponential backoff just burns retries. */
+export function rateLimitBackoffMs(attempt: number, retryAfter: string | null): number {
+  const hinted = retryAfter ? Number(retryAfter) * 1_000 : NaN;
+  if (Number.isFinite(hinted) && hinted > 0) return Math.min(hinted, 5_000);
+  return 1_000 * 2 ** attempt + Math.floor(Math.random() * 250);
 }
 
 function toIx(ix: z.infer<typeof ixSchema>): TransactionInstruction {
@@ -156,4 +178,4 @@ function toIx(ix: z.infer<typeof ixSchema>): TransactionInstruction {
 }
 
 const backoffMs = (attempt: number) => 200 * 2 ** attempt + Math.floor(Math.random() * 100);
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));

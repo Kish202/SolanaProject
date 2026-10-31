@@ -48,7 +48,7 @@ export class PricePipeline {
   constructor(
     private readonly redis: Redis,
     private readonly log: Logger,
-    private readonly opts: { priceUrl: string; mints: string[]; pollMs: number; fetchImpl?: typeof fetch },
+    private readonly opts: { priceUrl: string; mints: string[]; pollMs: number; apiKey?: string; fetchImpl?: typeof fetch },
   ) {}
 
   start(): void {
@@ -75,7 +75,8 @@ export class PricePipeline {
   async pollOnce(): Promise<PriceTick[]> {
     const fetchImpl = this.opts.fetchImpl ?? fetch;
     const url = `${this.opts.priceUrl}?ids=${this.opts.mints.join(",")}`;
-    const res = await fetchImpl(url, { signal: AbortSignal.timeout(3_000) });
+    const headers: Record<string, string> = this.opts.apiKey ? { "x-api-key": this.opts.apiKey } : {};
+    const res = await fetchImpl(url, { headers, signal: AbortSignal.timeout(3_000) });
     if (!res.ok) throw new Error(`price api ${res.status}`);
     const ticks = parsePrices(await res.json(), Date.now());
 
