@@ -56,7 +56,7 @@ export type ServerDeps = {
   log: Logger;
   priceMints: string[];
   adminApiKey: string;
-  corsOrigins: string["https://solana-project-omega.vercel.app/"];
+  corsOrigins: string[];
 };
 
 export async function buildServer(deps: ServerDeps) {
