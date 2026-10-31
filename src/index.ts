@@ -3,7 +3,7 @@ import bs58 from "bs58";
 import { loadConfig } from "./config.js";
 import { createPool } from "./db/pool.js";
 import { logger } from "./logger.js";
-import { createRedis } from "./redis.js";
+import { createRedisPair, isLocalUrl } from "./redis.js";
 import { JupiterClient } from "./solana/jupiter.js";
 import { PricePipeline } from "./prices/pricePipeline.js";
 import { SponsorGuard } from "./trade/sponsorGuard.js";
@@ -16,8 +16,13 @@ async function main() {
   await loadSecretsIntoEnv();
   const cfg = loadConfig();
   const db = createPool(cfg.DATABASE_URL, { sslMode: cfg.DATABASE_SSL, sslCa: cfg.DATABASE_SSL_CA });
-  const redis = createRedis(cfg.REDIS_URL);
-  const redisSub = createRedis(cfg.REDIS_URL);
+  let redisUrl = cfg.REDIS_URL;
+  if (redisUrl && isLocalUrl(redisUrl) && (process.env.RENDER || cfg.NODE_ENV === "production")) {
+    logger.warn("REDIS_URL points at localhost on a hosted server; ignoring it and using in-memory Redis");
+    redisUrl = undefined;
+  }
+  const { redis, redisSub, mode } = await createRedisPair(redisUrl);
+  if (mode === "memory") logger.warn("REDIS_URL not set: using in-memory Redis (single instance only)");
 
   const connection = new Connection(cfg.SOLANA_RPC_URL, { commitment: cfg.SOLANA_COMMITMENT });
   const broadcastRpcs = cfg.SOLANA_SEND_RPC_URLS.map((url) => new Connection(url, { commitment: cfg.SOLANA_COMMITMENT }));

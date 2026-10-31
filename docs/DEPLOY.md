@@ -5,7 +5,7 @@
 | Frontend (Next.js) | Vercel | `web/` |
 | Backend API | Render (native Node runtime) | repo root |
 | Postgres | Supabase | tables created by `npm run migrate` |
-| Redis | Render Key Value | created by `render.yaml` |
+| Redis | Render Key Value | created by `render.yaml`. Optional: with no `REDIS_URL` the API uses in-memory Redis (fine for one instance) |
 
 Free-tier caveats:
 - Render's free web service **sleeps after 15 minutes without traffic** and takes about a minute to wake up. Open the site a few minutes before a demo.

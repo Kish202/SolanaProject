@@ -75,3 +75,15 @@ This should be impossible for more than about 90 seconds, because blockhashes ex
 2. Use the **Session pooler** connection string (IPv4). The direct connection is IPv6-only and fails from Render and most AWS setups.
 3. `too many connections`: lower the pool size in `src/db/pool.ts`, or upgrade the Supabase plan. Each API instance uses up to 10 connections.
 4. Trades in flight during a database outage keep landing on-chain. When the database is back, restart the API so `recoverInFlight` settles them into the ledger.
+
+## Redis unreachable (`ECONNREFUSED`, `MaxRetriesPerRequestError`)
+
+- `REDIS_URL` must be your provider's URL (Render: Key Value, then Connect, then Internal URL, in the same region as the API).
+- A `localhost` `REDIS_URL` on a hosted server is ignored, and the API falls back to in-memory Redis with a warning.
+- In-memory mode keeps rate limits, the sponsor budget and the price lock inside one process. Use real Redis before running more than one instance.
+
+## Dependency audit
+
+- The backend has 0 known vulnerabilities (`npm audit`). `@solana/spl-token` was dropped (its `bigint-buffer` has no fix); token program IDs and associated token account derivation live in `src/solana/tokenPrograms.ts`.
+- `jayson` (inside `@solana/web3.js`) is overridden to patched `uuid` and `stream-json`, in both the backend and `web/`.
+- `web/` still reports moderate `minimatch` advisories from ESLint plugins. They are dev-only and never shipped; the fixed `minimatch` 11 is not compatible with those plugins yet.

@@ -17,7 +17,7 @@ const schema = z.object({
   DATABASE_URL: z.string().url(),
   DATABASE_SSL: z.enum(["disable", "require", "verify"]).optional(),
   DATABASE_SSL_CA: z.string().optional(),
-  REDIS_URL: z.string().url(),
+  REDIS_URL: z.preprocess((v) => (v === "" ? undefined : v), z.string().url().optional()),
 
   SOLANA_RPC_URL: z.string().url(),
   SOLANA_SEND_RPC_URLS: z.string().default("").transform(csv),
@@ -39,16 +39,13 @@ const schema = z.object({
   PRICE_POLL_MS: z.coerce.number().int().min(250).default(10_000),
 }).superRefine((c, ctx) => {
   if (c.NODE_ENV !== "production") return;
-  for (const key of ["DATABASE_URL", "REDIS_URL"] as const) {
-    const host = new URL(c[key]).hostname;
-    if (host === "localhost" || host === "127.0.0.1") {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: [key],
-        message: `points at ${host}, which does not exist on a hosted server. Use your provider's connection URL` +
-          (key === "REDIS_URL" ? " (Render: Key Value > Connect > Internal URL)." : "."),
-      });
-    }
+  const host = new URL(c.DATABASE_URL).hostname;
+  if (host === "localhost" || host === "127.0.0.1") {
+    ctx.addIssue({
+      code: "custom",
+      path: ["DATABASE_URL"],
+      message: `points at ${host}, which does not exist on a hosted server. Use your Supabase connection URL.`,
+    });
   }
 });
 

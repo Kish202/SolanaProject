@@ -16,6 +16,7 @@ export const priceKey = (mint: string) => `price:${mint}`;
 const LOCK_KEY = "lock:price-poller";
 
 const priceResponse = z.record(
+  z.string(),
   z.object({ usdPrice: z.number(), blockId: z.number().nullable().optional(), priceChange24h: z.number().nullable().optional() }),
 );
 

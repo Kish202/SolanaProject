@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { Connection, Keypair, PublicKey, VersionedTransaction } from "@solana/web3.js";
-import { getAssociatedTokenAddressSync, TOKEN_2022_PROGRAM_ID, TOKEN_PROGRAM_ID } from "@solana/spl-token";
+import { getAssociatedTokenAddressSync, TOKEN_2022_PROGRAM_ID, TOKEN_PROGRAM_ID } from "../solana/tokenPrograms.js";
 import bs58 from "bs58";
 import type { Db } from "../db/pool.js";
 import { withTransaction } from "../db/pool.js";
