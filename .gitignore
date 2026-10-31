@@ -1,0 +1,9 @@
+node_modules/
+dist/
+.next/
+web/web/
+.env
+*.keypair.json
+coverage/
+.terraform/
+*.tfstate*

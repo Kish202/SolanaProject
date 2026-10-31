@@ -1,0 +1,45 @@
+# Render Blueprint: backend API (native Node runtime) + Redis. The database is Supabase Postgres.
+# Render dashboard -> New -> Blueprint -> pick this repo. Fill in the "sync: false" values when prompted.
+services:
+  - type: web
+    name: solana-trade-api
+    runtime: node
+    plan: free
+    # NODE_ENV=production also applies at build time, so dev deps (TypeScript) must be included explicitly.
+    buildCommand: npm ci --include=dev && npm run build
+    # Free instances have no pre-deploy step, so migrations run at boot (idempotent, guarded by an advisory lock).
+    startCommand: npm run start:prod
+    healthCheckPath: /readyz
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false # Supabase "Session pooler" connection string
+      - key: DATABASE_SSL
+        value: require
+      - key: REDIS_URL
+        fromService:
+          type: keyvalue
+          name: solana-trade-redis
+          property: connectionString
+      - key: ADMIN_API_KEY
+        generateValue: true
+      - key: SPONSOR_SECRET_KEY
+        sync: false
+      - key: PLATFORM_FEE_OWNER
+        sync: false
+      - key: SOLANA_RPC_URL
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false
+      - key: PRICE_POLL_MS
+        value: "5000"
+
+  - type: keyvalue
+    name: solana-trade-redis
+    plan: free
+    maxmemoryPolicy: allkeys-lru
+    ipAllowList: [] # reachable only from other Render services
