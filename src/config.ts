@@ -37,6 +37,19 @@ const schema = z.object({
 
   PRICE_MINTS: z.string().default("So11111111111111111111111111111111111111112").transform(csv),
   PRICE_POLL_MS: z.coerce.number().int().min(250).default(10_000),
+}).superRefine((c, ctx) => {
+  if (c.NODE_ENV !== "production") return;
+  for (const key of ["DATABASE_URL", "REDIS_URL"] as const) {
+    const host = new URL(c[key]).hostname;
+    if (host === "localhost" || host === "127.0.0.1") {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: [key],
+        message: `points at ${host}, which does not exist on a hosted server. Use your provider's connection URL` +
+          (key === "REDIS_URL" ? " (Render: Key Value > Connect > Internal URL)." : "."),
+      });
+    }
+  }
 });
 
 export type Config = z.infer<typeof schema>;
